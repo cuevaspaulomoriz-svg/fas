@@ -16,10 +16,6 @@ target_include_directories(cheat PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     imgui
     imgui/backends
-    dobby/include
 )
 
-target_link_libraries(cheat
-    android log EGL GLESv3
-    ${CMAKE_SOURCE_DIR}/libs/arm64-v8a/libdobby.a
-)
+target_link_libraries(cheat android log EGL GLESv3)
