@@ -22,22 +22,6 @@ jobs:
       run: |
         git clone --depth 1 https://github.com/ocornut/imgui.git src/imgui
 
-    - name: Build Dobby from source (ARM64 Android)
-      run: |
-        git clone --depth 1 https://github.com/jmpews/Dobby.git /tmp/Dobby
-        mkdir -p /tmp/Dobby/build_android
-        cmake -S /tmp/Dobby -B /tmp/Dobby/build_android \
-          -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
-          -DANDROID_ABI=arm64-v8a \
-          -DANDROID_PLATFORM=android-21 \
-          -DCMAKE_BUILD_TYPE=Release \
-          -DDOBBY_BUILD_SHARED=OFF \
-          -DDOBBY_BUILD_STATIC=ON
-        cmake --build /tmp/Dobby/build_android -j4
-        mkdir -p src/libs/arm64-v8a src/dobby/include
-        cp /tmp/Dobby/build_android/libdobby.a src/libs/arm64-v8a/
-        cp /tmp/Dobby/include/dobby.h src/dobby/include/
-
     - name: Configure CMake
       run: |
         cd src
