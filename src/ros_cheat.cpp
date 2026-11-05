@@ -48,7 +48,7 @@ static bool WriteHook(void* target, void* replacement, void** original) {
     // Make trampoline executable
     uintptr_t tp = (uintptr_t)tramp;
     mprotect((void*)(tp & ~0xFFF), 0x2000, PROT_READ|PROT_WRITE|PROT_EXEC);
-    __builtin___clear_cache(tramp, tramp + 32);
+    __builtin___clear_cache((char*)tramp, (char*)tramp + 32);
     *original = tramp;
 
     // Write hook into target
@@ -60,7 +60,7 @@ static bool WriteHook(void* target, void* replacement, void** original) {
     uintptr_t rep = (uintptr_t)replacement;
     memcpy(&patch[2], &rep, 8);
     memcpy(target, patch, 16);
-    __builtin___clear_cache(target, (uint8_t*)target + 16);
+    __builtin___clear_cache((char*)target, (char*)target + 16);
     return true;
 }
 
