@@ -64,11 +64,15 @@ void RefreshRegions() {
     fclose(f);
 }
 
-// Fast process_vm_readv based read
+// Fixed: use /proc/self/mem fd (process_vm_readv not in NDK headers)
+static int g_mem_fd = -1;
+
 bool SafeRead(uintptr_t addr, void* out, size_t sz) {
-    struct iovec local  = {out, sz};
-    struct iovec remote = {(void*)addr, sz};
-    return process_vm_readv(getpid(), &local, 1, &remote, 1, 0) == (ssize_t)sz;
+    if (g_mem_fd < 0) {
+        g_mem_fd = open("/proc/self/mem", O_RDONLY);
+        if (g_mem_fd < 0) return false;
+    }
+    return pread64(g_mem_fd, out, sz, (off64_t)addr) == (ssize_t)sz;
 }
 
 bool SafeWrite(uintptr_t addr, const void* in, size_t sz) {
@@ -266,10 +270,10 @@ void DrawMenu() {
     // Always-visible toggle button
     ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x - 55, 5), ImGuiCond_Always);
     ImGui::SetNextWindowSize(ImVec2(50, 30), ImGuiCond_Always);
+    // Fixed: removed ImGuiWindowFlags_AlwaysOnTop (not in ImGui)
     ImGui::Begin("##tog", nullptr,
         ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove |
-        ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_AlwaysOnTop |
-        ImGuiWindowFlags_NoSavedSettings);
+        ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoSavedSettings);
     if (ImGui::Button("MOD")) g_menu_open = !g_menu_open;
     ImGui::End();
 
