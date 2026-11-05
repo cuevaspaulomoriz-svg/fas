@@ -1,0 +1,33 @@
+name: Build ROS Cheat
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup Android NDK
+      uses: nttld/setup-ndk@v1
+      with:
+        ndk-version: r25c
+        add-to-path: true
+    - name: Clone ImGui
+      run: git clone --depth 1 https://github.com/ocornut/imgui.git src/imgui
+    - name: Setup Dobby header
+      run: |
+        mkdir -p src/dobby/include src/libs/arm64-v8a
+        printf '#pragma once\n#ifdef __cplusplus\nextern "C" {\n#endif\nint DobbyHook(void*,void*,void**);\n#ifdef __cplusplus\n}\n#endif\n' > src/dobby/include/dobby.h
+        curl -L -o src/libs/arm64-v8a/libdobby.a https://github.com/jmpews/Dobby/releases/download/v1.0/libdobby_android_arm64.a || touch src/libs/arm64-v8a/libdobby.a
+    - name: Build
+      run: |
+        cp src/ros_cheat.cpp src/imgui/
+        cd src
+        cmake -B build -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-21 -DCMAKE_BUILD_TYPE=Release
+        cmake --build build -j4
+    - name: Upload
+      uses: actions/upload-artifact@v4
+      with:
+        name: libcheat
+        path: src/build/libcheat.so
