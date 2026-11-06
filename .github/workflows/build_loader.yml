@@ -20,24 +20,8 @@ jobs:
     - name: Create loader source
       run: |
         mkdir -p loader
-        cat > loader/loader.cpp << 'CPP'
-#include <dlfcn.h>
-#include <android/log.h>
-#define TAG "ROS_LOADER"
-#define LOG(...) __android_log_print(ANDROID_LOG_DEBUG, TAG, __VA_ARGS__)
-__attribute__((constructor))
-void load_cheat() {
-    void* h = dlopen("libcheat.so", RTLD_NOW | RTLD_GLOBAL);
-    if (h) LOG("libcheat.so loaded OK");
-    else   LOG("libcheat.so FAILED: %s", dlerror());
-}
-CPP
-        cat > loader/CMakeLists.txt << 'CMAKE'
-cmake_minimum_required(VERSION 3.18)
-project(loader)
-add_library(AudioCCReName SHARED loader.cpp)
-target_link_libraries(AudioCCReName android log)
-CMAKE
+        printf '#include <dlfcn.h>\n#include <android/log.h>\n#define TAG "ROS_LOADER"\n#define LOG(...) __android_log_print(ANDROID_LOG_DEBUG, TAG, __VA_ARGS__)\n__attribute__((constructor))\nvoid load_cheat() {\n    void* h = dlopen("libcheat.so", RTLD_NOW | RTLD_GLOBAL);\n    if (h) LOG("libcheat.so loaded OK");\n    else   LOG("libcheat.so FAILED: %%s", dlerror());\n}\n' > loader/loader.cpp
+        printf 'cmake_minimum_required(VERSION 3.18)\nproject(loader)\nadd_library(AudioCCReName SHARED loader.cpp)\ntarget_link_libraries(AudioCCReName android log)\n' > loader/CMakeLists.txt
 
     - name: Build
       run: |
