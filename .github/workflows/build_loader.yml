@@ -20,58 +20,41 @@ jobs:
     - name: Create loader source
       run: |
         mkdir -p loader
-        cat > loader/loader.cpp << 'CPPEOF'
-#include <dlfcn.h>
-#include <android/log.h>
-#include <stdio.h>
-#include <string.h>
-#include <dirent.h>
-
-#define TAG "ROS_LOADER"
-#define LOG(...) __android_log_print(ANDROID_LOG_DEBUG, TAG, __VA_ARGS__)
-
-static void try_load(const char* dir) {
-    char path[512];
-    snprintf(path, sizeof(path), "%s/libcheat.so", dir);
-    void* h = dlopen(path, RTLD_NOW | RTLD_GLOBAL);
-    if (h) LOG("Loaded from: %s", path);
-    else   LOG("Failed %s: %s", path, dlerror());
-}
-
-__attribute__((constructor))
-void load_cheat() {
-    // Try common Android lib paths
-    try_load("/data/app");
-    // Find our own path from /proc/self/maps and use same dir
-    FILE* f = fopen("/proc/self/maps", "r");
-    if (!f) return;
-    char line[512];
-    while (fgets(line, sizeof(line), f)) {
-        if (strstr(line, "libAudioCCReName.so")) {
-            // Extract directory path
-            char* path_start = strchr(line, '/');
-            if (!path_start) continue;
-            // Remove newline
-            char* nl = strchr(path_start, '\n');
-            if (nl) *nl = 0;
-            // Remove filename, keep dir
-            char* last_slash = strrchr(path_start, '/');
-            if (!last_slash) continue;
-            *last_slash = 0;
-            LOG("Our dir: %s", path_start);
-            try_load(path_start);
-            break;
+        python3 -c "
+        code = r'''
+        #include <dlfcn.h>
+        #include <android/log.h>
+        #include <stdio.h>
+        #include <string.h>
+        #define TAG \"ROS_LOADER\"
+        #define LOG(...) __android_log_print(ANDROID_LOG_DEBUG, TAG, __VA_ARGS__)
+        __attribute__((constructor))
+        void load_cheat() {
+            FILE* f = fopen(\"/proc/self/maps\", \"r\");
+            if (!f) return;
+            char line[512];
+            while (fgets(line, sizeof(line), f)) {
+                if (strstr(line, \"libAudioCCReName.so\")) {
+                    char* p = strchr(line, '/');
+                    if (!p) continue;
+                    char* nl = strchr(p, '\n'); if (nl) *nl=0;
+                    char* sl = strrchr(p, '/'); if (!sl) continue;
+                    *sl = 0;
+                    char path[512];
+                    snprintf(path, sizeof(path), \"%s/libcheat.so\", p);
+                    void* h = dlopen(path, RTLD_NOW|RTLD_GLOBAL);
+                    if (h) LOG(\"loaded: %s\", path);
+                    else LOG(\"fail: %s\", dlerror());
+                    break;
+                }
+            }
+            fclose(f);
         }
-    }
-    fclose(f);
-}
-CPPEOF
-        cat > loader/CMakeLists.txt << 'CMAKE'
-cmake_minimum_required(VERSION 3.18)
-project(loader)
-add_library(AudioCCReName SHARED loader.cpp)
-target_link_libraries(AudioCCReName android log)
-CMAKE
+        '''.strip()
+        open('loader/loader.cpp','w').write(code)
+        cmake = 'cmake_minimum_required(VERSION 3.18)\nproject(loader)\nadd_library(AudioCCReName SHARED loader.cpp)\ntarget_link_libraries(AudioCCReName android log)\n'
+        open('loader/CMakeLists.txt','w').write(cmake)
+        "
 
     - name: Build
       run: |
@@ -88,3 +71,4 @@ CMAKE
         name: libloader
         path: loader/build/libAudioCCReName.so
         retention-days: 30
+        
